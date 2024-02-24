@@ -68,7 +68,7 @@ private:
 
 	/// @brief 
 	/// @param ncm 
-	void combineFileFFmpeg(Ncm ncm);
+	// void combineFileFFmpeg(Ncm ncm);
 
 
 };

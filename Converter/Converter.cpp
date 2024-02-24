@@ -312,7 +312,7 @@ void Converter::combineFile(Ncm ncm)
     printf("Combine file sucess.\n");
 }
 
-
+/*
 void Converter::combineFileFFmpeg(Ncm ncm)
 {
     av_register_all();
@@ -359,3 +359,4 @@ void Converter::combineFileFFmpeg(Ncm ncm)
 
     avformat_free_context(outputFormatContext);
 }
+*/
