@@ -19,7 +19,9 @@ CRC校验码		      4bytes		    跳过
 
 Gap			          5bytes		    跳过
 
-Image Size		    Image Size	  图片数据
+Image Size        4bytes        图片大小
+
+Image       	    Image Size	  图片数据
 
 Music Data				RC4-KSA生成s盒，RC4-PRGA解密
 
