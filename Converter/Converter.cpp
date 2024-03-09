@@ -10,10 +10,12 @@
 #include <taglib/id3v2tag.h>
 #include <taglib/attachedpictureframe.h>
 #include <taglib/tbytevector.h>
-#include <nlohmann/json.hpp>
+//#include <nlohmann/json.hpp>
 #include <boost/filesystem.hpp>
 #include <unicode/unistr.h>
 #include <unicode/ustream.h>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 // Function to perform AES decryption
 // void decryptAES(const unsigned char *cipherText, size_t cipherTextLength, const unsigned char *key,  unsigned char *iv, unsigned char *plainText) {
@@ -38,28 +40,38 @@ bool Converter::ncm2mp3(std::string ncmFilePath, std::string outFilePath)
 
         std::string jsonMusicInfo = mataData(inputStream);
 
-        icu::UnicodeString unicodeString = icu::UnicodeString::fromUTF8(icu::StringPiece(jsonMusicInfo.c_str()));
+        if(jsonMusicInfo.empty())
+        {
+            return false;
+        }
 
-        std::string utf8String;
-        unicodeString.toUTF8String(utf8String);
+        QByteArray byteArray(jsonMusicInfo.c_str(),jsonMusicInfo.length());
+        QJsonParseError error;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray,&error);
 
-        nlohmann::json jsonData = nlohmann::json::parse(utf8String);
+        if(error.error != QJsonParseError::NoError)
+        {
+            std::cout<<"error on json parsing"<<std::endl;
+            return false;
+        }
+
+        QJsonObject jsonData = jsonDoc.object();
         
         Mata mata;
-        mata.album = jsonData["album"];
+        mata.album = jsonData["album"].toString().toStdString();
 
-        std::string _name = jsonData["artist"][0][0];
-        unsigned int _num = jsonData["artist"][0][1];
+        std::string _name = jsonData["artist"][0][0].toString().toStdString();
+        unsigned int _num = jsonData["artist"][0][1].toVariant().toUInt();
 
         artistInfo info;
         info.name = _name;
         info.num = _num;
         mata.artist.push_back(info);
 
-        mata.format = jsonData["format"];
-        mata.musicName = jsonData["musicName"];
+        mata.format = jsonData["format"].toString().toStdString();
+        mata.musicName = jsonData["musicName"].toString().toStdString();
 
-        std::string jsonStr = nlohmann::to_string(jsonData);
+        std::string jsonStr = jsonDoc.toJson(QJsonDocument::Indented).toStdString();
 
         //std::cout << "jsonData:  "<<jsonStr << std::endl;
 
@@ -88,7 +100,7 @@ bool Converter::ncm2mp3(std::string ncmFilePath, std::string outFilePath)
     }
   
 
-    return false;
+    return true;
 }
 
 void Converter::magicHeader(std::ifstream &inputStream)
@@ -124,28 +136,25 @@ std::string Converter::cr4Key(std::ifstream &inputStream)
 
     //2.AES解密
 
-    int plain_data_len = AES::decrypt(encrypedKey,len,AES::CORE_KEY.data(),decryedKey);
+    int decrylen = AES::decrypt(encrypedKey,len,AES::CORE_KEY.data(),decryedKey);
+    int plain_data_len = AES::pkcs5unpadding(decryedKey,decrylen);
 
-    memset(decryedKey+len,0,len);
-
-    uint8_t finatmep[plain_data_len];
-
-    memcpy(finatmep,decryedKey+17,plain_data_len-17);
-    memset(finatmep+plain_data_len-17,0,17);
-
+    //memset(decryedKey+len,0,len);
     //3. skip 'neteasecloudmusic' 17bytes
-    std::string ret((char*)&finatmep[0]);
 
+    uint8_t finatmep[plain_data_len-17];
+    memcpy(finatmep,decryedKey+17,plain_data_len-17);
+    //memset(finatmep+plain_data_len-17,0,17);
 
-    //std::cout << __func__ << __LINE__ << "  cr4Key:  " << ret << std::endl;
-    
+    int sz  = sizeof(finatmep)/sizeof(finatmep[0]);
+    std::string ret(reinterpret_cast<const char*>(finatmep),sz);
 
     return ret;
 }
 
 std::string Converter::mataData(std::ifstream &inputStream)
 {
-    unsigned char bytes[4];
+    uint8_t bytes[4];
 
     inputStream.read(reinterpret_cast<char*>(bytes),4);
     int len = Utils::getLength(bytes);
@@ -153,9 +162,8 @@ std::string Converter::mataData(std::ifstream &inputStream)
     //std::cout<<__func__<<__LINE__<< "  len = "<<len<< std::endl;
 
     char byte[len];
-    uint8_t encrypedKey[len+1];
+    uint8_t encrypedKey[len];
     uint8_t decrypedKey[len*2];
-    char *buffer; 
     int plain_data_len = 0;
     int encode_data_len = 0;
     inputStream.read(byte,len);
@@ -181,49 +189,62 @@ std::string Converter::mataData(std::ifstream &inputStream)
 
     //2.去除前`163 key(Don't modity):`22个字符
     memcpy(encrypedKey,byte+22,len-22);
-    encrypedKey[len-22]='\0';
+    //encrypedKey[len-22]='\0';
 
     //3.Base64进行decode转码
     
-    printf("mata before base64 decode: %s\n\n\n",encrypedKey);
+    //printf("mata before base64 decode: %s\n\n\n",encrypedKey);
 
-    buffer = base64_decode((char*)encrypedKey,&encode_data_len);
+    encode_data_len = len-12;
 
-    std::cout << "mata after base64 decode: "<<buffer<<std::endl;
+    int sz = sizeof(encrypedKey)/sizeof(encrypedKey[0]);
+    uint8_t *buffer = nullptr;
+    buffer = (uint8_t*)base64_decode((char*)encrypedKey,&encode_data_len);
+
+    if(!buffer || (buffer[0] == '\0'))
+    {
+        return std::string("");
+    }
+
+    /*
+    std::string encr(reinterpret_cast<const char*>(encrypedKey),sz);
+    QString qbase64 = QString::fromStdString(encr);
+    QByteArray bytearray = QByteArray::fromBase64(qbase64.toUtf8());
+    QString decodeStr = QString::fromUtf8(bytearray);
+
+    */
+    //std::cout << "mata after base64 decode: "<<decodeStr.toStdString()<<std::endl;
 
     //4 AES解密
 
     // std::vector<unsigned char> temp_v(tempStr.begin(),tempStr.end());
 
-    plain_data_len = AES::decrypt((unsigned char*)buffer,encode_data_len,AES::MATA_KEY.data(),decrypedKey);
-
+    int encrylen = AES::decrypt(buffer,encode_data_len,AES::MATA_KEY.data(),decrypedKey);
+    plain_data_len = AES::pkcs5unpadding(decrypedKey,encrylen);
     //std::cout << "mata decrypt successful"<<std::endl;
 
     //5 去除前面 music： 6个字节后获得JSON
 
-    uint8_t finatemp[plain_data_len];
+    uint8_t finatemp[plain_data_len-6];
 
     memcpy(finatemp,decrypedKey+6,plain_data_len-6);
 
-    memset(finatemp+plain_data_len-6,0,6);
+    //memset(finatemp+plain_data_len-6,0,6);
 
-    std::string mata((char*)&finatemp[0]);
+    int sz2 = sizeof(finatemp)/sizeof(finatemp[0]);
 
-    //std::cout<< __func__ << __LINE__ << "  mata: "<<finatemp<<std::endl;
+    std::string mata(reinterpret_cast<const char*>(finatemp),sz2);
 
-    free(buffer);
-
+    delete buffer;
     return mata;
 }
 
 std::string Converter::albumImage(std::ifstream &inputStream)
 {
-    char bytes[4];
-    inputStream.read(bytes,4);
+    uint8_t bytes[4];
+    inputStream.read(reinterpret_cast<char*>(bytes),4);
     int len = Utils::getLength(bytes);
 
-    //std::cout<<__func__<<__LINE__<<" image len: "<<len<<std::endl;
-    
     char imageData[len];
     inputStream.read(imageData,len);
 

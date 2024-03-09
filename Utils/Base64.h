@@ -18,7 +18,7 @@ int calcDecodeLength(const char *b64input) {
     else if (b64input[len-1] == '=') // last char is =
         padding = 1;
     else{
-        printf("base64 encode not end of =\n");
+        //printf("base64 encode not end of =\n");
     }
 
     return (int)len*0.75 - padding;
@@ -94,7 +94,7 @@ std::string base64_encode(const unsigned char *data, size_t length){
 }
 
 
-//problem                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
+//problem
 char* base64_decode(char * encodeData, int *encode_data_len){
     // BIO *bio, *b64;
     // char *buffer = new char[encoded.size()];

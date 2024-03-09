@@ -6,9 +6,8 @@
 #include <QObject>
 #include <QString>
 
-class Converter :public QObject
+class Converter
 {
-    Q_OBJECT
 
 public:
 	Converter(){
@@ -73,10 +72,6 @@ private:
 	/// @brief 
 	/// @param ncm 
 	// void combineFileFFmpeg(Ncm ncm);
-
-signals:
-
-    void processSig(QString);
 
 };
 

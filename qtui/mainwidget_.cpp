@@ -8,11 +8,12 @@ mainwidget_::mainwidget_(QWidget *parent)
     , ui(new Ui::mainwidget_)
 {
     ui->setupUi(this);
+    init();
 }
 
 mainwidget_::~mainwidget_()
 {
-    cvt->deleteLater();
+    delete cvt;
     delete ui;
 }
 
@@ -24,7 +25,7 @@ void mainwidget_::on_pushButton_clicked()
     if(musics.empty())
         return;
 
-    listMusic = ncmList.toList();
+    listMusic = musics.toList();
 
     QString music1 = listMusic.at(0);
     QFileInfo fileinfo(music1);
@@ -51,9 +52,7 @@ void mainwidget_::init()
 {
     outputdir.setCurrent("~/Music/ncm");
     cvt = new Converter();
-
-
-    connect(cvt,&Converter::processSig,this,&mainwidget_::refreshTextEdit);
+    this->setWindowTitle("网易云音乐转换");
 }
 
 void mainwidget_::refreshTextEdit(QString message)
@@ -70,20 +69,33 @@ void mainwidget_::on_pushButton_3_clicked()
         return;
     }
 
-    int count = listMusic.size();
-    info = QString("Total %1 files to be conver.\n").arg(count);
+    int totalCount = listMusic.size();
+    int successCount = 0;
+    int failedCount = 0;
+    info = QString("Total %1 files to be conver.\n").arg(totalCount);
     ui->textEdit->append(info);
 
     for(QString music : listMusic)
     {
         info = QString("Converting %1.\n").arg(music);
         ui->textEdit->append(info);
-        cvt->ncm2mp3(music.toStdString(),outputdir.absolutePath().toStdString());
-        info = QString("%1 converted.").arg(music);
-        ui->textEdit->append(info);
+
+        if(cvt->ncm2mp3(music.toStdString(),outputdir.absolutePath().toStdString()))
+        {
+            successCount++;
+            info = QString("%1 converted successful.").arg(music);
+            ui->textEdit->append(info);
+        }
+        else
+        {
+            failedCount++;
+            info = QString("%1 converted failed.").arg(music);
+            ui->textEdit->append(info);
+        }
     }
 
-    info = QString("Total %1 files converted completed!").arg(count);
+    info = QString("Total %1 files , %2 successful, %3 failed.").arg(totalCount).arg(successCount).arg(failedCount);
+    ui->textEdit->append(info);
 }
 
 
@@ -96,5 +108,5 @@ void mainwidget_::on_lineEdit_textChanged(const QString &arg1)
 void mainwidget_::on_lineEdit_2_textChanged(const QString &arg1)
 {
     outputdir = arg1;
-}
+ }
 

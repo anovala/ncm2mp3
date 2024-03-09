@@ -20,8 +20,9 @@ public:
 
     static const unsigned int BUFSIZE = 1024;
 
+
     /*
-    static int decrypt(unsigned char *cipher_data, int cipher_data_len, const unsigned char *key, unsigned char *plain_data)
+    static int decrypt(const unsigned char *cipher_data, int cipher_data_len, const unsigned char *key,unsigned char *plain_data)
     {
         EVP_CIPHER_CTX *ctx;
 
@@ -60,9 +61,11 @@ public:
         return plain_data_len;
     
     }
+
     */
 
-    static int decrypt(uint8_t *cipher_data, int len, uint8_t *key, uint8_t *plain_data)
+
+    static int decrypt(const uint8_t *cipher_data, int len, const uint8_t *key, uint8_t *plain_data)
     {
         AES_KEY decryptionKey;
         AES_set_decrypt_key(key, 128, &decryptionKey);
@@ -70,10 +73,12 @@ public:
         int numBlocks = len / AES_BLOCK_SIZE; // Calculate the number of blocks
         int decryptedLen = numBlocks * AES_BLOCK_SIZE; // Calculate the total length of decrypted data
 
+        /*
         if(len % AES_BLOCK_SIZE != 0)
         {
             numBlocks++;
         }
+        */
 
         // Perform decryption
         for (int i = 0; i < numBlocks; ++i) {
@@ -81,6 +86,22 @@ public:
         }
 
         return decryptedLen;
+    }
+
+    static int pkcs5unpadding(uint8_t *data, int len)
+    {
+        unsigned char paddingsize = data[len - 1];
+
+        unsigned int paddingindex = len - paddingsize;
+
+        for(int i = 0;i < paddingsize; i++)
+        {
+            if(data[paddingindex+i] != (uint8_t)paddingsize)
+            {
+                return -1;
+            }
+        }
+        return paddingindex;
     }
 
 };
