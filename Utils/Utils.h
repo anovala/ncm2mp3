@@ -11,7 +11,7 @@ public:
 
     }
 
-    static int getLength(char *bytes);
+    static int getLength(unsigned char *bytes);
 
     /**
      * 图片专辑MIME类型

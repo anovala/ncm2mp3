@@ -3,8 +3,12 @@
 #include "../mime/Ncm.h"
 #include <string>
 #include <fstream>
+#include <QObject>
+#include <QString>
 
-class Converter {
+class Converter :public QObject
+{
+    Q_OBJECT
 
 public:
 	Converter(){
@@ -70,6 +74,9 @@ private:
 	/// @param ncm 
 	// void combineFileFFmpeg(Ncm ncm);
 
+signals:
+
+    void processSig(QString);
 
 };
 

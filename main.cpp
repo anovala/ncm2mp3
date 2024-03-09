@@ -1,10 +1,14 @@
-#include <iostream>
+/*#include <iostream>
 #include <regex>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
-#include "Converter/Converter.h"
+#include "Converter/Converter.h" */
 
 
+#include "qtui/mainwidget_.h"
+#include <QApplication>
+
+/*
 void processNpmFiles(const std::string &inputPath, const std::string &outputPath){
 
     boost::regex npmFilePattern(".*\\.ncm$");
@@ -23,8 +27,7 @@ void processNpmFiles(const std::string &inputPath, const std::string &outputPath
         if(boost::regex_match(filePath,npmFilePattern)) {
             cvt->ncm2mp3(entry.path().string(),outputPath);
             n++;
-        }
-        
+        } 
         }
       
     }
@@ -51,4 +54,13 @@ int main(void)
     printf("转换完成\n");
 
     return 0;
+}
+*/
+
+int main(int argc, char *argv[])
+{
+    QApplication a(argc,argv);
+    mainwidget_ w;
+    w.show();
+    return a.exec();
 }

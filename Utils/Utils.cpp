@@ -1,7 +1,7 @@
 #include "Utils.h"
 
 //little endian
-int Utils::getLength(char *bytes)
+int Utils::getLength(unsigned char *bytes)
 {
     int len = 0;
     len |= bytes[0] & 0xff;

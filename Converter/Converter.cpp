@@ -14,9 +14,6 @@
 #include <boost/filesystem.hpp>
 #include <unicode/unistr.h>
 #include <unicode/ustream.h>
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
 
 // Function to perform AES decryption
 // void decryptAES(const unsigned char *cipherText, size_t cipherTextLength, const unsigned char *key,  unsigned char *iv, unsigned char *plainText) {
@@ -64,7 +61,8 @@ bool Converter::ncm2mp3(std::string ncmFilePath, std::string outFilePath)
 
         std::string jsonStr = nlohmann::to_string(jsonData);
 
-        std::cout << "jsonData:  "<<jsonStr << std::endl;
+        //std::cout << "jsonData:  "<<jsonStr << std::endl;
+
 
         ncm.mata = mata;
 
@@ -76,12 +74,12 @@ bool Converter::ncm2mp3(std::string ncmFilePath, std::string outFilePath)
         -3)+ncm.mata.format;
         ncm.outFile = outFilePath;
 
-        std::cout << "out put path: "<<outFilePath << std::endl;
+        //std::cout << "out put path: "<<outFilePath << std::endl;
 
         std::ofstream outputStream(outFilePath);
         musicData(inputStream,outputStream,key);
 
-        std::cout << "get music data success "<<std::endl;        
+        //std::cout << "get music data success "<<std::endl;
         combineFile(ncm);
 
         printf("文件转换成功: %s\n",outFilePath.c_str());
@@ -104,19 +102,19 @@ void Converter::magicHeader(std::ifstream &inputStream)
 
 std::string Converter::cr4Key(std::ifstream &inputStream)
 {
-    char keyLenBuffer[4];
+    // 4 bytes key length , unsigned int
+    uint8_t keyLenBuffer[4];
 
-    inputStream.read(keyLenBuffer,4);
+    inputStream.read(reinterpret_cast<char*>(keyLenBuffer),4);
     int len = Utils::getLength(keyLenBuffer);
 
     printf("len = %d\n",len);
 
     uint8_t encrypedKey[len];
-    // uint8_t temp[len];
     uint8_t decryedKey[len*2];
     inputStream.read((char*)encrypedKey,len);
 
-     std::cout << __func__ << __LINE__ << " read "<< inputStream.gcount() << " bytes from file stream."<<std::endl;
+    //std::cout << __func__ << __LINE__ << " read "<< inputStream.gcount() << " bytes from file stream."<<std::endl;
 
 
     //1.按字节对0x64异或
@@ -126,38 +124,20 @@ std::string Converter::cr4Key(std::ifstream &inputStream)
 
     //2.AES解密
 
-    // std::vector <unsigned char> Key_v(encrypedKey,encrypedKey+len);
-
-    // for(unsigned char c: Key_v)
-    // {
-    //     std::cout << c << " ";
-    // }
-    // std::cout << std::endl;
-
-    // Key_v = AES::decrypt(Key_v,AES::CORE_KEY,AES::TRANSFORMATION,AES::ALGORITHM);
-
-    std::cout << "  encrypted key: "<<encrypedKey<<std::endl;
-
     int plain_data_len = AES::decrypt(encrypedKey,len,AES::CORE_KEY.data(),decryedKey);
 
     memset(decryedKey+len,0,len);
-
-    std::cout << __func__ << __LINE__ <<"  cr4 decrypt success!   "<<"  \nPlain data: "<<decryedKey<<std::endl;
-
-    std::cout << __func__ << __LINE__ <<" plain data len : "<<plain_data_len<<std::endl;
-    // memcpy(decryedKey,encrypedKey,len-17); 
 
     uint8_t finatmep[plain_data_len];
 
     memcpy(finatmep,decryedKey+17,plain_data_len-17);
     memset(finatmep+plain_data_len-17,0,17);
-    std::cout<< __func__ << __LINE__ <<"  memcpy success!"<<std::endl;
 
     //3. skip 'neteasecloudmusic' 17bytes
     std::string ret((char*)&finatmep[0]);
 
 
-    std::cout << __func__ << __LINE__ << "  cr4Key:  " << ret << std::endl;
+    //std::cout << __func__ << __LINE__ << "  cr4Key:  " << ret << std::endl;
     
 
     return ret;
@@ -165,12 +145,12 @@ std::string Converter::cr4Key(std::ifstream &inputStream)
 
 std::string Converter::mataData(std::ifstream &inputStream)
 {
-    char bytes[4];
+    unsigned char bytes[4];
 
-    inputStream.read(bytes,4);
+    inputStream.read(reinterpret_cast<char*>(bytes),4);
     int len = Utils::getLength(bytes);
 
-    std::cout<<__func__<<__LINE__<< "  len = "<<len<< std::endl;
+    //std::cout<<__func__<<__LINE__<< "  len = "<<len<< std::endl;
 
     char byte[len];
     uint8_t encrypedKey[len+1];
@@ -180,7 +160,7 @@ std::string Converter::mataData(std::ifstream &inputStream)
     int encode_data_len = 0;
     inputStream.read(byte,len);
 
-    std::cout << __func__ << __LINE__ << " read "<< inputStream.gcount() << " bytes from file stream."<<std::endl;
+    //std::cout << __func__ << __LINE__ << " read "<< inputStream.gcount() << " bytes from file stream."<<std::endl;
 
     //跳过：CRC(4字节)，unused Gap(5字节)
     char temp[9];
@@ -217,7 +197,7 @@ std::string Converter::mataData(std::ifstream &inputStream)
 
     plain_data_len = AES::decrypt((unsigned char*)buffer,encode_data_len,AES::MATA_KEY.data(),decrypedKey);
 
-    std::cout << "mata decrypt successful"<<std::endl;
+    //std::cout << "mata decrypt successful"<<std::endl;
 
     //5 去除前面 music： 6个字节后获得JSON
 
@@ -229,7 +209,7 @@ std::string Converter::mataData(std::ifstream &inputStream)
 
     std::string mata((char*)&finatemp[0]);
 
-    std::cout<< __func__ << __LINE__ << "  mata: "<<finatemp<<std::endl;
+    //std::cout<< __func__ << __LINE__ << "  mata: "<<finatemp<<std::endl;
 
     free(buffer);
 
@@ -242,7 +222,7 @@ std::string Converter::albumImage(std::ifstream &inputStream)
     inputStream.read(bytes,4);
     int len = Utils::getLength(bytes);
 
-    std::cout<<__func__<<__LINE__<<" image len: "<<len<<std::endl;
+    //std::cout<<__func__<<__LINE__<<" image len: "<<len<<std::endl;
     
     char imageData[len];
     inputStream.read(imageData,len);
@@ -250,11 +230,10 @@ std::string Converter::albumImage(std::ifstream &inputStream)
     if(!inputStream)
         throw std::runtime_error("read image data error!");
     else
-        std::cout<<__func__<<__LINE__<<" read "<<inputStream.gcount()<<" from stream"<<std::endl;
+        //std::cout<<__func__<<__LINE__<<" read "<<inputStream.gcount()<<" from stream"<<std::endl;
 
-    std::string img(imageData,len);
+    return std::string(imageData,len);
 
-    return img; 
 }
 
 void Converter::musicData(std::ifstream &inputStream, std::ofstream &outputStream, std::string cr4Key__)
