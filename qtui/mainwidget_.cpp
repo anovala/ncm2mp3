@@ -15,6 +15,9 @@ mainwidget_::~mainwidget_()
 {
     delete cvt;
     delete ui;
+
+    workerThread->quit();
+    workerThread->wait();
 }
 
 //get music files and convert
@@ -48,11 +51,51 @@ void mainwidget_::on_pushButton_2_clicked()
     outputdir.setPath(path);
 }
 
+void mainwidget_::recvProcessingConvert(bool b, QString fileName)
+{
+    if(b)
+    {
+        info = QString("%1 converted successful.").arg(fileName);
+        successCount++;
+    }
+    else
+    {
+        info = QString("%1 converted failed.").arg(fileName);
+        failedCount++;
+    }
+    ui->textEdit->append(info);
+}
+
+void mainwidget_::recvConvertFin()
+{
+    info = QString("Total %1 files , %2 successful, %3 failed.").arg(totalCount).arg(successCount).arg(failedCount);
+    ui->textEdit->append(info);
+}
+
 void mainwidget_::init()
 {
-    outputdir.setCurrent("~/Music/ncm");
     cvt = new Converter();
     this->setWindowTitle("网易云音乐转换");
+
+    Worker *worker = nullptr;
+    workerThread = new QThread();
+    outputdir.setCurrent("~/Music/ncm");
+    workerThread->start();
+
+    // worker thread init
+    worker = new Worker();
+    worker->moveToThread(workerThread);
+    connect(this,&mainwidget_::sigConvert,worker,&Worker::doConvert);
+    connect(worker,&Worker::processConvert,this,&mainwidget_::recvProcessingConvert);
+    connect(worker,&Worker::resultReady,this,&mainwidget_::recvConvertFin);
+
+}
+
+void mainwidget_::resetCount()
+{
+    totalCount = 0;
+    successCount = 0;
+    failedCount = 0;
 }
 
 void mainwidget_::refreshTextEdit(QString message)
@@ -60,7 +103,7 @@ void mainwidget_::refreshTextEdit(QString message)
     ui->textEdit->append(message);
 }
 
-
+//Convert
 void mainwidget_::on_pushButton_3_clicked()
 {
     if(ui->lineEdit->text().isEmpty() || ui->lineEdit_2->text().isEmpty())
@@ -69,12 +112,19 @@ void mainwidget_::on_pushButton_3_clicked()
         return;
     }
 
-    int totalCount = listMusic.size();
-    int successCount = 0;
-    int failedCount = 0;
-    info = QString("Total %1 files to be conver.\n").arg(totalCount);
+    resetCount();
+
+    emit sigConvert(listMusic,outputdir);
+
+    totalCount = listMusic.size();
+    info = QString("Total %1 files to be convert.\n").arg(totalCount);
     ui->textEdit->append(info);
 
+    return;
+
+    /*
+     * convert in worker thread
+     *
     for(QString music : listMusic)
     {
         info = QString("Converting %1.\n").arg(music);
@@ -96,6 +146,8 @@ void mainwidget_::on_pushButton_3_clicked()
 
     info = QString("Total %1 files , %2 successful, %3 failed.").arg(totalCount).arg(successCount).arg(failedCount);
     ui->textEdit->append(info);
+    */
+
 }
 
 

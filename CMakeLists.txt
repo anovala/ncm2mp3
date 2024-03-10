@@ -35,6 +35,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         qtui/mainwidget_.h
         qtui/mainwidget_.h
         qtui/mainwidget_.cpp qtui/mainwidget_.h qtui/mainwidget_.ui
+        worker/worker.h
 
 
     )

@@ -4,7 +4,9 @@
 #include <QWidget>
 #include <QFileDialog>
 #include <QStringList>
+#include <QThread>
 #include "../Converter/Converter.h"
+#include "../worker/worker.h"
 
 namespace Ui {
 class mainwidget_;
@@ -18,17 +20,12 @@ public:
     explicit mainwidget_(QWidget *parent = nullptr);
     ~mainwidget_();
 
-
-
-
-private slots:
-    void on_pushButton_clicked();
-
-    void on_pushButton_2_clicked();
-
+signals:
+    void sigConvert(QList<QString> list,QDir outputdir);
 
 private:
     void init();
+    void resetCount();
 
     Converter *cvt;
     QDir outputdir;
@@ -36,6 +33,11 @@ private:
     QStringList musics;
     QList<QString> listMusic;
 
+    QThread *workerThread;
+
+    int totalCount;
+    int successCount;
+    int failedCount;
 
 private slots:
     void refreshTextEdit(QString);
@@ -45,6 +47,14 @@ private slots:
     void on_lineEdit_textChanged(const QString &arg1);
 
     void on_lineEdit_2_textChanged(const QString &arg1);
+
+    void on_pushButton_clicked();
+
+    void on_pushButton_2_clicked();
+
+    void recvProcessingConvert(bool b, QString fileName);
+
+    void recvConvertFin();
 
 private:
     Ui::mainwidget_ *ui;
