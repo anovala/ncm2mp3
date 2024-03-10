@@ -16,6 +16,8 @@
 #include <unicode/ustream.h>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTextCodec>
+#include <QDebug>
 
 // Function to perform AES decryption
 // void decryptAES(const unsigned char *cipherText, size_t cipherTextLength, const unsigned char *key,  unsigned char *iv, unsigned char *plainText) {
@@ -43,14 +45,19 @@ bool Converter::ncm2mp3(std::string ncmFilePath, std::string outFilePath)
         if(jsonMusicInfo.empty())
         {
             return false;
+
         }
+
 
         QByteArray byteArray(jsonMusicInfo.c_str(),jsonMusicInfo.length());
         QJsonParseError error;
         QJsonDocument jsonDoc = QJsonDocument::fromJson(byteArray,&error);
 
+
+
         if(error.error != QJsonParseError::NoError)
         {
+            std::cout<<__func__<<__LINE__ << "json: "<<jsonMusicInfo<<std::endl;
             std::cout<<"error on json parsing"<<std::endl;
             return false;
         }
@@ -137,7 +144,7 @@ std::string Converter::cr4Key(std::ifstream &inputStream)
     //2.AES解密
 
     int decrylen = AES::decrypt(encrypedKey,len,AES::CORE_KEY.data(),decryedKey);
-    int plain_data_len = AES::pkcs5unpadding(decryedKey,decrylen);
+    int plain_data_len = AES::pkcs5unpaddingCR4(decryedKey,decrylen);
 
     //memset(decryedKey+len,0,len);
     //3. skip 'neteasecloudmusic' 17bytes
@@ -199,28 +206,41 @@ std::string Converter::mataData(std::ifstream &inputStream)
 
     int sz = sizeof(encrypedKey)/sizeof(encrypedKey[0]);
     uint8_t *buffer = nullptr;
+
+    /*
     buffer = (uint8_t*)base64_decode((char*)encrypedKey,&encode_data_len);
 
     if(!buffer || (buffer[0] == '\0'))
     {
         return std::string("");
     }
-
-    /*
-    std::string encr(reinterpret_cast<const char*>(encrypedKey),sz);
-    QString qbase64 = QString::fromStdString(encr);
-    QByteArray bytearray = QByteArray::fromBase64(qbase64.toUtf8());
-    QString decodeStr = QString::fromUtf8(bytearray);
-
     */
-    //std::cout << "mata after base64 decode: "<<decodeStr.toStdString()<<std::endl;
+
+
+    QTextCodec *codec = QTextCodec::codecForName("GB18030");
+    if(!codec)
+    {
+        std::cout<<"not codec"<<std::endl;
+        return std::string("");
+    }
+    std::string encr1(reinterpret_cast<const char*>(encrypedKey),sz);
+    std::string encr2 = codec->toUnicode(QByteArray::fromStdString(encr1)).toUtf8().toStdString();
+    QByteArray byteArray = QByteArray::fromBase64(QByteArray::fromStdString(encr1));
+    std::string decodeStr = byteArray.toStdString();
+
+    //std::cout << "mata after base64 decode: "<<decodeStr<<std::endl;
 
     //4 AES解密
 
     // std::vector<unsigned char> temp_v(tempStr.begin(),tempStr.end());
 
-    int encrylen = AES::decrypt(buffer,encode_data_len,AES::MATA_KEY.data(),decrypedKey);
-    plain_data_len = AES::pkcs5unpadding(decrypedKey,encrylen);
+    int encrylen = AES::decrypt(reinterpret_cast<const uint8_t*>(decodeStr.c_str()),encode_data_len,AES::MATA_KEY.data(),decrypedKey);
+    plain_data_len = AES::pkcs5unpaddingMata(decrypedKey,encrylen);
+
+    std::cout<<__LINE__ << __func__ << "json: "<< decrypedKey<<std::endl;
+
+    if(plain_data_len < 100)
+        return std::string("");
     //std::cout << "mata decrypt successful"<<std::endl;
 
     //5 去除前面 music： 6个字节后获得JSON
@@ -234,6 +254,7 @@ std::string Converter::mataData(std::ifstream &inputStream)
     int sz2 = sizeof(finatemp)/sizeof(finatemp[0]);
 
     std::string mata(reinterpret_cast<const char*>(finatemp),sz2);
+
 
     delete buffer;
     return mata;

@@ -32,11 +32,13 @@ struct Image {
 		if(data == nullptr)
 		{
 			data = new unsigned char[sz];
-			len = sz;
+            len = sz;
+            memcpy(data,c,sz);
 		}else{
 			delete[] data;
 			data = new unsigned char[sz];
 			len = sz;
+            memcpy(data,c,sz);
 		}
 	}
 

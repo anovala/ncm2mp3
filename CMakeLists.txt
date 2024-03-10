@@ -103,6 +103,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE ICU::uc ICU::i18n)
 find_package(nlohmann_json 3.2.0 REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)
 
-
+find_package(Qt6 REQUIRED COMPONENTS Core5Compat)
+target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Core5Compat)
 
 
